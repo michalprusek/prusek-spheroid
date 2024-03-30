@@ -2,7 +2,7 @@
 
 Prusek-Spheroid is a Python package designed for spheroid segmentation based on provided microscope images. This package provides an easy-to-use interface and functionalities that are essential for determination of properties and characteristics of the spheroids.
 
-The whole software is described in more detail in the file **prusek-spheroid-research-project.pdf**
+The whole software is described in more detail in the **prusek-spheroid-research-project.pdf** file.
 
 ## Installation
 
