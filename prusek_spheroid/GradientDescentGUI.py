@@ -22,7 +22,7 @@ class MyDataset(torch.utils.data.Dataset):
 
 class GradientDescent:
     def __init__(self, annotation_data, outputAddress, projekt, algorithm, learning_rate,
-                 num_iterations, delta, batch_size, f, progress_window=None, inner_contours=False,
+                 num_iterations, delta, batch_size, f, progress_window=None, contours_state=None,
                  detect_corrupted=True):
         self.projekt = projekt
         self.algorithm = algorithm
@@ -60,7 +60,7 @@ class GradientDescent:
         self.f = f
 
         self.instance = self.f(self.outputAddress, self.projekt,
-                               self.algorithm, inner_contours=inner_contours, detect_corrupted=detect_corrupted)
+                               self.algorithm, contours_state=contours_state, detect_corrupted=detect_corrupted)
 
         # Initialize cont_normalized_parameters
         self.cont_normalized_parameters = self.normalize_parameters(self.cont_parameters)
@@ -200,8 +200,10 @@ class GradientDescent:
                 if self.progress_window:
                     self.progress_window.update_info(self.projekt, self.algorithm, iterations,
                                                      round(average_iou * 100, 2),
-                                                     round(iteration_time * (self.num_iterations - iterations)), f"{batch_num+1}/{self.num_batches}")
-                print(f"Project: {self.projekt}, Algorithm: {self.algorithm}, Iteration: {iterations}, Batch:{batch_num+1}/{self.num_batches} IoU: {round(iou * 100, 2)}%")
+                                                     round(iteration_time * (self.num_iterations - iterations)),
+                                                     f"{batch_num + 1}/{self.num_batches}")
+                print(
+                    f"Project: {self.projekt}, Algorithm: {self.algorithm}, Iteration: {iterations}, Batch:{batch_num + 1}/{self.num_batches} IoU: {round(iou * 100, 2)}%")
 
             average_iou = np.average(iteration_iou)
             IoU_array.append(average_iou)
@@ -235,7 +237,8 @@ class GradientDescent:
 
             if self.progress_window:
                 self.progress_window.update_info(self.projekt, self.algorithm, iterations, round(average_iou * 100, 2),
-                                                 round(iteration_time * (self.num_iterations - iterations)), f"FINISHED")
+                                                 round(iteration_time * (self.num_iterations - iterations)),
+                                                 f"FINISHED")
 
             print(f"Project: {self.projekt}, Algorithm: {self.algorithm}, Iteration: {iterations}, "
                   f"IoU: {round(average_iou * 100, 2)}%, Parameters = {rounded_parameters_new}, "
@@ -251,7 +254,7 @@ class GradientDescent:
         index = np.argmax(IoU_array)
         json_data_list = []
         for batch in self.data_loader:
-           json_data_list.append(self.instance.run(batch, parameters_array[index], True))
+            json_data_list.append(self.instance.run(batch, parameters_array[index], True))
 
         self.instance.save_parameters_json(IoU_array[index], json_data_list)
 

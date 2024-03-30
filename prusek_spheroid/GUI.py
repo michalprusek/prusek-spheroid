@@ -1,17 +1,49 @@
 import tkinter as tk
 from tkinter import filedialog
-from tkinter import messagebox, Toplevel, Label
+from tkinter import messagebox
 from prusek_spheroid import GradientDescentGUI as g
-from prusek_spheroid import ContoursClassGUI as f
-import Funkce as f
+from prusek_spheroid import ContoursClassGUI as F
 import threading
 import time
 import json
 import zipfile
 import os
 from prusek_spheroid import characteristic_functions as cf
+from prusek_spheroid import file_management as fm
 import pandas as pd
 import cv2 as cv
+from tkinter import Toplevel, Label
+
+
+def show_selection_dialog(root):
+    # Skryje hlavní Tkinter okno
+    root.withdraw()
+
+    dialog = tk.Toplevel(root)
+    dialog.title("Software Selection")
+    dialog.geometry("400x150")  # Nastaví velikost dialogového okna
+
+    seg_button = tk.Button(dialog, text="Spheroids Segmentation", command=lambda: open_segmentation_gui(dialog, root))
+    seg_button.pack(pady=20)
+
+    quant_button = tk.Button(dialog, text="Spheroids Quantification", command=lambda: open_quantification_gui(dialog, root))
+    quant_button.pack(pady=20)
+
+    def on_close():
+        root.quit()  # Ukončí celý program, když je zavřeno toto dialogové okno
+
+    dialog.protocol("WM_DELETE_WINDOW", on_close)
+
+
+def open_segmentation_gui(dialog, root):
+    dialog.destroy()
+    root.deiconify()
+    app = SpheroidSegmentationGUI(root)
+
+def open_quantification_gui(dialog, root):
+    dialog.destroy()
+    root.deiconify()
+    app = SpheroidQuantificationGUI(root)
 
 
 def update_addresses(annotationsAddress):
@@ -145,21 +177,124 @@ class ParameterEntryDialog(tk.Toplevel):
         self.parameters = new_parameters
 
 
+def shorten_path(path, max_length=40):
+    if len(path) > max_length:
+        return '...' + path[-max_length+3:]
+    return path
+
 def browse_file(var, title, label):
     file_path = filedialog.askopenfilename()
     var.set(file_path)
-    # Aktualizace předaného labelu s vlastním textem
-    label.config(text=f"{title}: {file_path}")
-
+    shortened_path = shorten_path(file_path)
+    label.config(text=f"{title}: {shortened_path}")
 
 def browse_directory(var, title, label):
     directory_path = filedialog.askdirectory()
     var.set(directory_path)
-    # Aktualizace předaného labelu s vlastním textem
-    label.config(text=f"{title}: {directory_path}")
+    shortened_path = shorten_path(directory_path)
+    label.config(text=f"{title}: {shortened_path}")
 
 
-class SferoidSegmentationGUI:
+class SpheroidQuantificationGUI:
+    def __init__(self, master):
+        self.master = master
+        self.master.title("Spheroid Quantification")
+
+        # Sekce pro kvantifikaci sféroidů
+        # Implementace funkcí a GUI prvků pro kvantifikaci sféroidů
+
+        # Button to retrieve the folder address of masks of annotated spheroids
+        self.retrieve_masks_button_quantification = tk.Button(master,
+                                                              text="Retrieve the folder address of masks of annotated spheroids",
+                                                              command=lambda: browse_directory(
+                                                                  self.masks_annotation_path_quantification,
+                                                                  "Selected masks folder",
+                                                                  self.masks_address_label_quantification))
+        self.retrieve_masks_button_quantification.pack()
+
+        self.masks_annotation_path_quantification = tk.StringVar()
+        self.masks_address_label_quantification = tk.Label(master, text="")
+        self.masks_address_label_quantification.pack()
+
+        # Button to retrieve the output folder address
+        self.retrieve_output_button_quantification = tk.Button(master,
+                                                               text="Retrieve the output folder address",
+                                                               command=lambda: browse_directory(
+                                                                   self.output_path_quantification,
+                                                                   "Selected output folder",
+                                                                   self.output_address_label_quantification))
+        self.retrieve_output_button_quantification.pack()
+
+        self.output_path_quantification = tk.StringVar()
+        self.output_address_label_quantification = tk.Label(master, text="")
+        self.output_address_label_quantification.pack()
+
+        # Button to calculate spheroid properties
+        self.calculate_properties_button = tk.Button(master, text="Calculate spheroid properties",
+                                                     command=self.calculate_spheroid_properties)
+        self.calculate_properties_button.pack()
+
+        self.master.protocol("WM_DELETE_WINDOW", self.on_close)
+
+    def on_close(self):
+        self.master.quit()  # Toto ukončí celý program
+
+    def calculate_spheroid_properties(self):
+        if not self.masks_annotation_path_quantification.get() or not self.output_path_quantification.get():
+            messagebox.showerror("Error", "Both mask folder and output folder addresses must be filled.")
+            return
+
+        masks_data = fm.load_masks(self.masks_annotation_path_quantification.get())
+        total_masks = len(masks_data)
+
+        # Dialog for progress
+        # Dialog for progress
+        progress_dialog = Toplevel(self.master)
+        progress_dialog.title("Processing Progress")
+        progress_dialog.geometry("400x100")  # Nastaví rozměry okna na 400x100 pixelů
+        Label(progress_dialog, text=f"Total images: {total_masks}").pack()
+        progress_label = Label(progress_dialog, text="Starting...")
+        progress_label.pack()
+
+        all_contour_data = []
+
+        for index, (mask, name) in enumerate(masks_data, start=1):
+            progress_label.config(text=f"Processing image {index} of {total_masks}")
+            progress_dialog.update()
+
+            contours, _ = cv.findContours(mask, cv.RETR_EXTERNAL, cv.CHAIN_APPROX_SIMPLE)
+            contours = sorted(contours, key=cv.contourArea, reverse=True)
+
+            for order, contour in enumerate(contours, start=1):
+                # Your contour processing and feature calculation goes here
+                additional_data = cf.calculate_all(contour)  # Toto je vaše vlastní funkce pro výpočet
+                contour_data = {
+                    'MaskName': os.path.basename(name),
+                    'ContourOrder': order,
+                    **additional_data
+                }
+                all_contour_data.append(contour_data)
+
+        columns = [
+            'MaskName', 'ContourOrder', 'Area', 'Circularity', 'Compactness', 'Convexity',
+            'EquivalentDiameter', 'FeretAspectRatio', 'FeretDiameterMax',
+            'FeretDiameterMaxOrthogonalDistance', 'FeretDiameterMin',
+            'LengthMajorDiameterThroughCentroid', 'LengthMinorDiameterThroughCentroid',
+            'Perimeter', 'Solidity', 'Sphericity'
+        ]
+        df = pd.DataFrame(all_contour_data, columns=columns)
+        output_path = self.output_path_quantification.get()
+        df.to_excel(f"{output_path}/contour_properties.xlsx")
+
+        # Close the progress dialog
+        progress_dialog.destroy()
+
+        # Show completion message
+        messagebox.showinfo("Completed", f"Spheroid properties calculated and saved.\nOutput path: {output_path}")
+        print("Spheroid properties calculated and saved.")
+
+
+class SpheroidSegmentationGUI:
     def __init__(self, master):
         self.loaded_parameters = None
         self.loaded_method = None
@@ -254,7 +389,7 @@ class SferoidSegmentationGUI:
         self.output_address_button = tk.Button(master,
                                                text="Output address (folder where to save the output)",
                                                command=lambda: browse_directory(self.output_path,
-                                                                                "Select output path:",
+                                                                                "Selected output path",
                                                                                 self.output_address_label))
         self.output_address_button.pack(side=tk.TOP)
 
@@ -323,11 +458,6 @@ class SferoidSegmentationGUI:
         self.iterations_entry = tk.Entry(self.parameters_frame)
         self.iterations_entry.grid(row=1, column=1, padx=5, pady=5)
 
-        self.stop_condition_label = tk.Label(self.parameters_frame, text="Stop Condition:")
-        self.stop_condition_label.grid(row=2, column=0, padx=5, pady=5)
-        self.stop_condition_entry = tk.Entry(self.parameters_frame)
-        self.stop_condition_entry.grid(row=2, column=1, padx=5, pady=5)
-
         self.batch_size_label = tk.Label(self.parameters_frame, text="Batch Size:")
         self.batch_size_label.grid(row=3, column=0, padx=5, pady=5)
         self.batch_size_entry = tk.Entry(self.parameters_frame)
@@ -336,25 +466,62 @@ class SferoidSegmentationGUI:
         # Přednastavení hodnot parametrů
         self.learning_rate_entry.insert(0, "0.01")
         self.iterations_entry.insert(0, "50")
-        self.stop_condition_entry.insert(0, "0.0002")
         self.batch_size_entry.insert(0, "10")
 
         # Oddělovací čára mezi adresní a metody sekce
         self.method_separator = tk.Frame(master, height=2, bd=1, relief=tk.SUNKEN)
         self.method_separator.pack(fill=tk.X, padx=5, pady=5)
 
+        # Hole Finding Settings Section
+        self.hole_finding_section_label = tk.Label(master, text="Hole Finding Settings", font=("Helvetica", 12, "bold"))
+        self.hole_finding_section_label.pack()
+
+        # Frame for the checkboxes
+        self.hole_finding_frame = tk.Frame(master)
+        self.hole_finding_frame.pack()
+
+        # Variables for the checkboxes
+        self.detect_outer_var = tk.IntVar(value=0)
+        self.detect_all_var = tk.IntVar(value=0)
+        self.view_select_var = tk.IntVar(value=0)
+
+        # Function to enforce only one checkbox can be checked
+        def update_hole_finding_checkboxes(selected_var):
+            vars = [self.detect_outer_var, self.detect_all_var, self.view_select_var]
+            for var in vars:
+                if var != selected_var:
+                    var.set(0)
+
+        # Checkboxes
+        self.detect_outer_checkbox = tk.Checkbutton(self.hole_finding_frame,
+                                                    text="Detect outer contours (spheroids with no holes)",
+                                                    variable=self.detect_outer_var,
+                                                    command=lambda: update_hole_finding_checkboxes(
+                                                        self.detect_outer_var))
+
+        self.detect_all_checkbox = tk.Checkbutton(self.hole_finding_frame,
+                                                  text="Detect all contours (spheroids with holes)",
+                                                  variable=self.detect_all_var,
+                                                  command=lambda: update_hole_finding_checkboxes(self.detect_all_var))
+
+        self.view_select_checkbox = tk.Checkbutton(self.hole_finding_frame,
+                                                   text="View results for 'all holes' and 'no holes' and select",
+                                                   variable=self.view_select_var,
+                                                   command=lambda: update_hole_finding_checkboxes(self.view_select_var))
+
+        self.detect_outer_checkbox.pack(anchor='w')  # Aligns to the west (left) of the frame
+        self.detect_all_checkbox.pack(anchor='w')  # Consistent with the first checkbox
+        self.view_select_checkbox.pack(anchor='w')
+
+        # Oddělovací čára mezi adresní a metody sekce
+        self.settings_separator = tk.Frame(master, height=2, bd=1, relief=tk.SUNKEN)
+        self.settings_separator.pack(fill=tk.X, padx=5, pady=5)
+
         self.other_section_label = tk.Label(master, text="Other Settings", font=("Helvetica", 12, "bold"))
         self.other_section_label.pack()
 
         checkbox_frame = tk.Frame(master)
         checkbox_frame.pack()
-
-        # Checkbox pro 'also find the inner contours'
-        self.inner_contours_var = tk.BooleanVar()
-        self.checkbox_inner_contours = tk.Checkbutton(checkbox_frame, text="Also find the inner contours",
-                                                      variable=self.inner_contours_var,
-                                                      onvalue=True, offvalue=False)
-        self.checkbox_inner_contours.pack(side=tk.LEFT)
 
         self.detect_corrupted_var = tk.BooleanVar()
         self.checkbox_detect_corrupted = tk.Checkbutton(checkbox_frame, text="Detect and discard corrupted images",
@@ -380,102 +547,21 @@ class SferoidSegmentationGUI:
         self.run_button = tk.Button(master, text="Run", command=self.run_method)
         self.run_button.pack()
 
-        # Adding a visual separator
-        self.run_separator = tk.Frame(master, height=2, bd=1, relief=tk.SUNKEN)
-        self.run_separator.pack(fill=tk.X, padx=5, pady=5)
-
-        # Spheroids quantification section title
-        self.quantification_section_label = tk.Label(master, text="Spheroids Quantification",
-                                                     font=("Helvetica", 12, "bold"))
-        self.quantification_section_label.pack()
-
-        # Button to retrieve the folder address of masks of annotated spheroids
-        self.retrieve_masks_button_quantification = tk.Button(master,
-                                                              text="Retrieve the folder address of masks of annotated spheroids",
-                                                              command=lambda: browse_directory(
-                                                                  self.masks_annotation_path_quantification,
-                                                                  "Selected masks folder",
-                                                                  self.masks_address_label_quantification))
-        self.retrieve_masks_button_quantification.pack()
-
-        self.masks_annotation_path_quantification = tk.StringVar()
-        self.masks_address_label_quantification = tk.Label(master, text="")
-        self.masks_address_label_quantification.pack()
-
-        # Button to retrieve the output folder address
-        self.retrieve_output_button_quantification = tk.Button(master,
-                                                               text="Retrieve the output folder address",
-                                                               command=lambda: browse_directory(
-                                                                   self.output_path_quantification,
-                                                                   "Selected output folder",
-                                                                   self.output_address_label_quantification))
-        self.retrieve_output_button_quantification.pack()
-
-        self.output_path_quantification = tk.StringVar()
-        self.output_address_label_quantification = tk.Label(master, text="")
-        self.output_address_label_quantification.pack()
-
-        # Button to calculate spheroid properties
-        self.calculate_properties_button = tk.Button(master, text="Calculate spheroid properties",
-                                                     command=self.calculate_spheroid_properties)
-        self.calculate_properties_button.pack()
-
         # Aktualizovat stav tlačítek při spuštění
         self.update_buttons_state()
 
-    def calculate_spheroid_properties(self):
-        if not self.masks_annotation_path_quantification.get() or not self.output_path_quantification.get():
-            messagebox.showerror("Error", "Both mask folder and output folder addresses must be filled.")
-            return
+        self.master.protocol("WM_DELETE_WINDOW", self.on_close)
 
-        masks_data = f.load_masks(self.masks_annotation_path_quantification.get())
-        total_masks = len(masks_data)
+    def on_close(self):
+        self.master.quit()
 
-        # Dialog for progress
-        # Dialog for progress
-        progress_dialog = Toplevel(self.master)
-        progress_dialog.title("Processing Progress")
-        progress_dialog.geometry("400x100")  # Nastaví rozměry okna na 400x100 pixelů
-        Label(progress_dialog, text=f"Total images: {total_masks}").pack()
-        progress_label = Label(progress_dialog, text="Starting...")
-        progress_label.pack()
-
-        all_contour_data = []
-
-        for index, (mask, name) in enumerate(masks_data, start=1):
-            progress_label.config(text=f"Processing image {index} of {total_masks}")
-            progress_dialog.update()
-
-            contours, _ = cv.findContours(mask, cv.RETR_EXTERNAL, cv.CHAIN_APPROX_SIMPLE)
-            contours = sorted(contours, key=cv.contourArea, reverse=True)
-
-            for order, contour in enumerate(contours, start=1):
-                # Your contour processing and feature calculation goes here
-                additional_data = cf.calculate_all(contour)  # Toto je vaše vlastní funkce pro výpočet
-                contour_data = {
-                    'MaskName': os.path.basename(name),
-                    'ContourOrder': order,
-                    **additional_data
-                }
-                all_contour_data.append(contour_data)
-
-        columns = [
-            'MaskName', 'ContourOrder', 'Area', 'Circularity', 'Compactness', 'Convexity',
-            'EquivalentDiameter', 'FeretAspectRatio', 'FeretDiameterMax',
-            'FeretDiameterMaxOrthogonalDistance', 'FeretDiameterMin',
-            'LengthMajorDiameterThroughCentroid', 'LengthMinorDiameterThroughCentroid',
-            'Perimeter', 'Solidity', 'Sphericity'
-        ]
-        df = pd.DataFrame(all_contour_data, columns=columns)
-        output_path = self.output_path_quantification.get()
-        df.to_excel(f"{output_path}/contour_properties.xlsx")
-
-        # Close the progress dialog
-        progress_dialog.destroy()
-
-        # Show completion message
-        messagebox.showinfo("Completed", f"Spheroid properties calculated and saved.\nOutput path: {output_path}")
-        print("Spheroid properties calculated and saved.")
+    def get_contours_state(self):
+        if self.detect_outer_var.get() == 1:
+            return "no"
+        elif self.detect_all_var.get() == 1:
+            return "all"
+        else:
+            return "select"
 
     def show_completion_dialog(self, time_taken, output_folder):
         dialog = tk.Toplevel(self.master)
@@ -484,7 +570,7 @@ class SferoidSegmentationGUI:
         message = f"DONE.\nSegmentation took {time_taken:.2f} seconds.\nOutput stored in a folder: {output_folder}"
         tk.Label(dialog, text=message).pack(padx=20, pady=10)
 
-        ok_button = tk.Button(dialog, text="OK", command=dialog.destroy)
+        ok_button = tk.Button(dialog, text="OK", command=lambda: [dialog.destroy(), self.reset_gui()])
         ok_button.pack(pady=10)
 
     def cancel_parameters_loaded(self):
@@ -498,7 +584,6 @@ class SferoidSegmentationGUI:
         # Unlock learning rate, number of iterations, and stop condition text fields
         self.learning_rate_entry.config(state=tk.NORMAL)
         self.iterations_entry.config(state=tk.NORMAL)
-        self.stop_condition_entry.config(state=tk.NORMAL)
         self.batch_size_entry.config(state=tk.NORMAL)
 
         self.parameters_loaded_label.config(state=tk.DISABLED)
@@ -531,7 +616,6 @@ class SferoidSegmentationGUI:
         state = tk.NORMAL
         self.learning_rate_entry.config(state=state)
         self.iterations_entry.config(state=state)
-        self.stop_condition_entry.config(state=state)
         self.batch_size_entry.config(state=state)
 
     def load_and_run_parameters(self):
@@ -549,8 +633,48 @@ class SferoidSegmentationGUI:
         # Extrahujte potřebná data
         self.loaded_method = data.get("method", "")
         self.loaded_parameters = data.get("parameters", {})
-        self.inner_contours_var.set(data.get("inner_contours", False))
         self.detect_corrupted_var.set(data.get("detect_corrupted", False))
+
+    def reset_gui(self):
+        # Reset checkboxes
+        self.load_coco_var.set(0)
+        self.load_masks_var.set(0)
+        self.detect_corrupted_var.set(False)
+        self.detect_all_var.set(False)
+        self.detect_corrupted_var.set(False)
+        self.detect_outer_var.set(False)
+        self.create_json_var.set(False)
+        self.calculate_contours_var.set(False)
+        for _, var in self.methods_checkboxes:
+            var.set(0)
+
+        # Clear and enable all entry fields
+        self.project_name_entry.delete(0, tk.END)
+        self.learning_rate_entry.delete(0, tk.END)
+        self.iterations_entry.delete(0, tk.END)
+        self.batch_size_entry.delete(0, tk.END)
+
+        self.learning_rate_entry.insert(0, "0.01")
+        self.iterations_entry.insert(0, "50")
+        self.batch_size_entry.insert(0, "10")
+
+        self.enable_parameter_entry()
+
+        # Clear all label texts
+        self.coco_address_label.config(text="")
+        self.mask_address_label.config(text="")
+        self.images_address_label.config(text="")
+        self.dataset_address_label.config(text="")
+        self.output_address_label.config(text="")
+
+        # Reset the loaded parameters and cancel button
+        self.loaded_parameters = None
+        self.loaded_method = None
+        self.parameters_loaded_label.config(state=tk.DISABLED)
+        self.cancel_button.config(state=tk.DISABLED)
+
+        # Update buttons state
+        self.update_buttons_state()
 
     def run_method_with_loaded_parameters(self):
         if not self.loaded_parameters:
@@ -581,27 +705,32 @@ class SferoidSegmentationGUI:
             # Lock learning rate, number of iterations, and stop condition text fields
             self.learning_rate_entry.config(state=tk.DISABLED)
             self.iterations_entry.config(state=tk.DISABLED)
-            self.stop_condition_entry.config(state=tk.DISABLED)
             self.batch_size_entry.config(state=tk.DISABLED)
 
     def run_method(self):
         project_name = self.project_name_entry.get()
 
-        if self.load_coco_var.get() + self.load_masks_var.get() != 1:
-            if self.load_coco_var.get() == self.load_masks_var.get() == 0:
-                messagebox.showerror("Error", "At least one annotation loading method must be selected.")
+        hole_finding_options = [self.detect_outer_var.get(), self.detect_all_var.get(), self.view_select_var.get()]
+        if sum(hole_finding_options) != 1:
+            messagebox.showerror("Error", "Exactly one hole finding option must be selected.")
             return
 
-        # Kontrola, zda jsou vyplněny potřebné cesty
-        if self.load_coco_var.get() == 1 and not self.coco_annotation_path.get():
-            messagebox.showerror("Error", "The COCO annotations path must be filled.")
-            return
-        elif self.load_masks_var.get() == 1:
-            if not self.masks_annotation_path.get() or not self.image_dataset_path.get():
-                messagebox.showerror("Error", "Both masks and image dataset paths must be filled.")
+        if self.loaded_parameters is None:
+            if self.load_coco_var.get() + self.load_masks_var.get() != 1:
+                if self.load_coco_var.get() == self.load_masks_var.get() == 0:
+                    messagebox.showerror("Error", "At least one annotation loading method must be selected.")
+                    return
+
+            # Check for the COCO or masks paths based on the selected method
+            if self.load_coco_var.get() == 1 and not self.coco_annotation_path.get():
+                messagebox.showerror("Error", "The COCO annotations path must be filled.")
                 return
+            elif self.load_masks_var.get() == 1:
+                if not self.masks_annotation_path.get() or not self.image_dataset_path.get():
+                    messagebox.showerror("Error", "Both masks and image dataset paths must be filled.")
+                    return
 
-        # Check that the second and third addresses are always filled
+            # Check that dataset and output addresses are always filled
         if not all([self.dataset_path.get(), self.output_path.get()]):
             messagebox.showerror("Error", "Both 'Image Dataset Path' and 'Output Path' must be filled.")
             return
@@ -610,24 +739,25 @@ class SferoidSegmentationGUI:
             messagebox.showerror("Error", "Project name must be filled in.")
             return
 
-        if not any(var.get() == 1 for _, var in self.methods_checkboxes):
+        if self.loaded_parameters is None and not any(var.get() == 1 for _, var in self.methods_checkboxes):
             messagebox.showerror("Error", "At least one of the four segmentation methods must be selected.")
             return
 
-        # Retrieve values from entry fields
-        annotation_addresses = []
-        if self.load_coco_var.get() == 1:
-            annotation_address = self.coco_annotation_path.get()
-            annotation_address = unzip(annotation_address, os.path.dirname(annotation_address))
-            annotations_address, images_address = update_addresses(annotation_address)
-            annotation_data = f.load_annotations(
-                os.path.join(annotations_address, 'instances_default.json'), images_address)
-            print(f"Loaded {len(annotation_data)} annotated images")
+        if self.loaded_parameters is None:
+            if self.load_coco_var.get() == 1:
+                annotation_address = self.coco_annotation_path.get()
+                annotation_address = unzip(annotation_address, os.path.dirname(annotation_address))
+                annotations_address, images_address = update_addresses(annotation_address)
+                annotation_data = fm.load_annotations(
+                    os.path.join(annotations_address, 'instances_default.json'), images_address)
+                print(f"Loaded {len(annotation_data)} annotated images")
+            else:
+                mask_adress = self.masks_annotation_path.get()
+                images_address = self.image_dataset_path.get()
+                annotation_data = fm.load_masks_from_images(mask_adress, images_address)
+                print(f"Loaded {len(annotation_data)} annotated images")
         else:
-            mask_adress = self.masks_annotation_path.get()
-            images_address = self.image_dataset_path.get()
-            annotation_data = f.load_masks_from_images(mask_adress, images_address)
-            print(f"Loaded {len(annotation_data)} annotated images")
+            annotation_data = None
 
         dataset_address = self.dataset_path.get()
         output_address = self.output_path.get()
@@ -646,7 +776,7 @@ class SferoidSegmentationGUI:
             progress_window1.update_info(project_name, algorithms, 0, "Unknown", "Unknown", "Unknown")
             progress_window1.withdraw()
 
-        inner_contours_value = self.inner_contours_var.get()
+        contours_state = self.get_contours_state()
         detect_corrupted = self.detect_corrupted_var.get()
         create_json = self.create_json_var.get()
         calculate_properties = self.calculate_contours_var.get()
@@ -657,12 +787,12 @@ class SferoidSegmentationGUI:
 
         run_thread = threading.Thread(target=self.run_main, args=(
             annotation_data, dataset_address, output_address, project_name, algorithms, parameters,
-            inner_contours_value, detect_corrupted, create_json, calculate_properties, progress_window1,
+            contours_state, detect_corrupted, create_json, calculate_properties, progress_window1,
             progress_window2))
         run_thread.start()
 
     def run_main(self, annotation_data, dataset_address, output_address, project_name, algorithms, known_parameters,
-                 inner_contours, detect_corrupted, create_json, calculate_properties, progress_window1,
+                 contours_state, detect_corrupted, create_json, calculate_properties, progress_window1,
                  progress_window2):
         totalTime = time.time()
 
@@ -672,13 +802,13 @@ class SferoidSegmentationGUI:
             if known_parameters is None:
                 learning_rate = float(self.learning_rate_entry.get())
                 num_iterations = int(self.iterations_entry.get())
-                stop_condition = float(self.stop_condition_entry.get())
+                stop_condition = 0.0002
                 batch_size = int(self.batch_size_entry.get())
                 progress_window1.deiconify()
                 parameters, iou = g.GradientDescent(annotation_data, output_address, project_name, algorithm,
                                                     learning_rate,
                                                     num_iterations, stop_condition, batch_size, F.IoU, progress_window1,
-                                                    inner_contours=inner_contours,
+                                                    contours_state=contours_state,
                                                     detect_corrupted=detect_corrupted).run()
                 print(f"Resulting parameters: {parameters}", f"IoU: {round(iou * 100, 2)}%")
                 progress_window1.withdraw()
@@ -686,8 +816,8 @@ class SferoidSegmentationGUI:
                 parameters = known_parameters
 
             progress_window2.deiconify()
-            F.Contours(dataset_address, output_address, project_name, algorithm, parameters,
-                       False, F.IoU, inner_contours, detect_corrupted, create_json, calculate_properties,
+            F.Contours(self.master, dataset_address, output_address, project_name, algorithm, parameters,
+                       False, F.IoU, contours_state, detect_corrupted, create_json, calculate_properties,
                        progress_window2).run()
             print(f"Segmentation of the project took: {round(time.time() - startTime)} seconds")
             progress_window2.withdraw()
@@ -700,5 +830,5 @@ class SferoidSegmentationGUI:
 
 if __name__ == "__main__":
     root = tk.Tk()
-    app = SferoidSegmentationGUI(root)
+    show_selection_dialog(root)
     root.mainloop()
