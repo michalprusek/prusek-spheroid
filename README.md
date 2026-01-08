@@ -1,50 +1,50 @@
 # Spheroid Segmentation Optimizer
 
-Automatická optimalizace parametrů segmentace sféroidů pomocí **Gradient Descent (Adam)** nebo **Bayesian Optimization (GP + EI)**.
+Automatic optimization of spheroid segmentation parameters using **Gradient Descent (Adam)** or **Bayesian Optimization (GP + EI)**.
 
-## Funkce
+## Features
 
-- **Dva optimizační algoritmy:**
-  - **Gradient Descent (Adam)** - klasický přístup s konečnými diferencemi
-  - **Bayesian Optimization (GP+EI)** - globální optimalizace pomocí Gaussian Process
+- **Two optimization algorithms:**
+  - **Gradient Descent (Adam)** - classical approach with finite differences
+  - **Bayesian Optimization (GP+EI)** - global optimization using Gaussian Process
 
-- **Tři segmentační metody:**
+- **Three segmentation methods:**
   - Sauvola adaptive thresholding
   - Niblack adaptive thresholding
   - Gaussian adaptive thresholding
 
-- **Automatická optimalizace parametrů:**
-  - `window_size` - velikost okna pro prahování
-  - `min_area` - minimální plocha kontury
-  - `sigma` - parametr Canny edge detection
-  - `std_k` - koeficient standardní odchylky
-  - `dilation_size` - velikost morfologické dilatace
+- **Automatic parameter optimization:**
+  - `window_size` - window size for thresholding
+  - `min_area` - minimum contour area
+  - `sigma` - Canny edge detection parameter
+  - `std_k` - standard deviation coefficient
+  - `dilation_size` - morphological dilation size
 
-## Instalace
+## Installation
 
 ```bash
-# Klonovat repozitář
+# Clone the repository
 git clone https://github.com/michalprusek/prusek-spheroid.git
 cd prusek-spheroid
 
-# Vytvořit virtuální prostředí
+# Create virtual environment
 python -m venv .venv
 source .venv/bin/activate  # Linux/macOS
-# nebo: .venv\Scripts\activate  # Windows
+# or: .venv\Scripts\activate  # Windows
 
-# Nainstalovat závislosti
+# Install dependencies
 pip install -r requirements.txt
 ```
 
-## Spuštění
+## Usage
 
-### GUI aplikace
+### GUI Application
 
 ```bash
 python GUI.py
 ```
 
-### Programatické použití
+### Programmatic Usage
 
 ```python
 from BayesianOptimizerGUI import BayesianOptimizer
@@ -52,7 +52,7 @@ from GradientDescentGUI import GradientDescent
 from ContoursClassGUI import IoU
 import Funkce as f
 
-# Načíst data
+# Load data
 data = f.load_masks_from_images("path/to/masks", "path/to/images")
 
 # Bayesian Optimization
@@ -60,7 +60,7 @@ optimizer = BayesianOptimizer(
     annotation_data=data,
     outputAddress="output/",
     projekt="my_project",
-    algorithm="Gaussian",  # nebo "Sauvola", "Niblack"
+    algorithm="Gaussian",  # or "Sauvola", "Niblack"
     learning_rate=0.01,
     num_iterations=100,
     delta=0,
@@ -74,28 +74,28 @@ best_params, best_iou = optimizer.run()
 print(f"Best IoU: {best_iou*100:.2f}%")
 ```
 
-## Porovnání optimizérů
+## Optimizer Comparison
 
-| Vlastnost | Gradient Descent | Bayesian Optimization |
-|-----------|------------------|----------------------|
-| Algoritmus | Adam + finite diff | GP + Expected Improvement |
-| Konvergence | Lokální minimum | Globální minimum |
-| Diskrétní parametry | Hill climbing | Native Integer space |
+| Property | Gradient Descent | Bayesian Optimization |
+|----------|------------------|----------------------|
+| Algorithm | Adam + finite diff | GP + Expected Improvement |
+| Convergence | Local minimum | Global minimum |
+| Discrete parameters | Hill climbing | Native Integer space |
 
-## Struktura projektu
+## Project Structure
 
 ```
 prusek-spheroid/
-├── GUI.py                    # Hlavní GUI aplikace
+├── GUI.py                    # Main GUI application
 ├── BayesianOptimizerGUI.py   # Bayesian Optimization
 ├── GradientDescentGUI.py     # Gradient Descent (Adam)
-├── ContoursClassGUI.py       # Segmentace a IoU výpočet
-├── Funkce.py                 # Pomocné funkce
+├── ContoursClassGUI.py       # Segmentation and IoU calculation
+├── Funkce.py                 # Helper functions
 ├── gpu_utils.py              # GPU/CUDA utility
-├── requirements.txt          # Python závislosti
+├── requirements.txt          # Python dependencies
 └── README.md
 ```
 
-## Licence
+## License
 
 MIT License

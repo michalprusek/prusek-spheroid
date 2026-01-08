@@ -5,7 +5,7 @@ from skimage.filters import threshold_sauvola, threshold_niblack
 from skimage import img_as_ubyte
 from concurrent.futures import ThreadPoolExecutor
 from threading import Lock
-# Flexibilní importy - podpora jak package, tak lokálního použití
+# Flexible imports - support both package and local usage
 try:
     from prusek_spheroid_bayesian import Funkce as f
     from prusek_spheroid_bayesian import characteristic_functions as cf
@@ -28,17 +28,17 @@ gpu.init_gpu(force_cpu=_FORCE_CPU)
 
 
 def find_intersection(img_binary, filtered_contours, contours, hierarchy, edges, inner_contours):
-    # Vytvoření výsledné masky pro průnik s Cannyho detektorem
+    # Create result mask for intersection with Canny detector
     result_mask = np.zeros_like(img_binary, dtype=np.uint8)
 
     for contour in filtered_contours:
-        # Vyplnění kontury
+        # Fill contour
         filled_contour = cv.fillPoly(np.zeros_like(img_binary), [contour], 1)
 
-        # Průnik s Cannyho detektorem
+        # Intersection with Canny detector
         intersection = filled_contour & edges
 
-        # Kontrola neprázdného průniku a přidání do výsledné masky
+        # Check non-empty intersection and add to result mask
         if np.any(intersection):
             result_mask = result_mask | filled_contour
 
@@ -80,16 +80,16 @@ def filter_contours(contours, img_shape, min_area, detect_corrupted=True):
     filtered_contours = []
 
     for contour in contours:
-        # Kontrola, zda kontura není na okraji obrazu
+        # Check if contour is on image edge
         if detect_corrupted:
             if not (np.any(contour[:, :, 0] == 0) or np.any(contour[:, :, 1] == 0) or
                     np.any(contour[:, :, 0] == width - 1) or np.any(contour[:, :, 1] == height - 1)):
                 if cv.contourArea(contour) >= min_area:
-                    # Přidání kontury do filtrovaných kontur
+                    # Add contour to filtered contours
                     filtered_contours.append(contour)
         else:
             if cv.contourArea(contour) >= min_area:
-                # Přidání kontury do filtrovaných kontur
+                # Add contour to filtered contours
                 filtered_contours.append(contour)
 
     return filtered_contours
@@ -144,7 +144,7 @@ class BaseImageProcessing:
         elif algorithm == "Gaussian":
             return self.gaussian_adaptive(parameters, img, img_name, inner_contours, detect_corrupted)
         else:
-            print(f"Algoritmus s názvem {algorithm} nenalezen.")
+            print(f"Algorithm named {algorithm} not found.")
             sys.exit(1)
 
     @staticmethod
@@ -221,21 +221,21 @@ class BaseImageProcessing:
         background_mask = cv.bitwise_not(mask_img)
         background = cv.bitwise_and(img_gray, img_gray, mask=background_mask)
 
-        # Výpočet histogramu pro referenční oblast pozadí
+        # Calculate histogram for reference background region
         hist_background = cv.calcHist([background], [0], background_mask, [256], [0, 256])
 
-        # Normalizace histogramu
+        # Normalize histogram
         cv.normalize(hist_background, hist_background, alpha=0, beta=255, norm_type=cv.NORM_MINMAX)
 
         hist_background[0] = 0
 
-        # Zpětná projekce histogramu
+        # Back projection of histogram
         back_project = cv.calcBackProject([img_gray], [0], hist_background, [0, 256], 1)
 
-        # Aplikace zpětné projekce pouze na oblast sféroidu
+        # Apply back projection only to spheroid region
         spheroid_back_project = cv.bitwise_and(back_project, back_project, mask=mask_img)
 
-        # Prahování s použitím Otsuovy metody
+        # Thresholding using Otsu's method
         _, img_binary = cv.threshold(spheroid_back_project, 0, 255, cv.THRESH_BINARY + cv.THRESH_OTSU)
 
         img_binary = f.Dilation(f.Erosion(img_binary, 3, 1), 3, 1)
@@ -309,14 +309,14 @@ class Contours(BaseImageProcessing):
                     if self.inner_contours:
 
                         for i, contour in enumerate(contours):
-                            # Získání indexu rodiče pro aktuální konturu
+                            # Get parent index for current contour
                             parent_index = hierarchy[0][i][3]
 
                             if parent_index != -1:
-                                # Kontrola, zda má rodič této kontury také rodiče (kontury druhého řádu)
+                                # Check if parent of this contour also has a parent (second order contours)
                                 grandparent_index = hierarchy[0][parent_index][3]
                                 if grandparent_index == -1:
-                                    # Kontura je prvního řádu (má rodiče, ale nemá dědečka)
+                                    # Contour is first order (has parent, but no grandparent)
                                     cv.drawContours(img, [contour], -1, [255, 0, 0], 2)
                                     inner_contours.append(contour)
                             else:
@@ -401,19 +401,19 @@ class IoU(BaseImageProcessing):
         #    cv.imwrite(f"img_print/{name}",mask)
 
     def process_and_compute_iou(self, ref_mask, img, img_name, parameters, save, lock):
-        # Převod tensoru masky a obrázku na numpy pole
+        # Convert mask and image tensors to numpy arrays
         ref_mask = ref_mask.numpy()
         img = img.numpy()
 
-        # Zpracování obrazu (předpokládá se, že img je ve formátu BGR)
+        # Process image (assuming img is in BGR format)
         img_gray = cv.cvtColor(img, cv.COLOR_BGR2GRAY)
 
-        # Aplikace algoritmu segmentace
+        # Apply segmentation algorithm
         img_binary, inner_contours_mask = self.apply_segmentation_algorithm(
             self.algorithm, parameters, img_gray, img, img_name,
             inner_contours=self.inner_contours, detect_corrupted=self.detect_corrupted)
 
-        # Další zpracování a výpočet IoU, TPR, PPV
+        # Further processing and IoU, TPR, PPV calculation
         if self.inner_contours:
             intersection = inner_contours_mask & img_binary
             img_binary = img_binary - intersection
@@ -456,7 +456,7 @@ class IoU(BaseImageProcessing):
             averageTPR = np.average(TPRs)
             averagePPV = np.average(PPVs)
 
-            # Uložení do JSON souboru
+            # Save to JSON file
             json_data = {
                 "method": self.algorithm,
                 "parameters": rounded_parameters,
@@ -478,7 +478,7 @@ class IoU(BaseImageProcessing):
                 "detect_corrupted": self.detect_corrupted
             })
 
-        # NumpyEncoder pro správné uložení numpy dat
+        # NumpyEncoder for proper saving of numpy data
         class NumpyEncoder(json.JSONEncoder):
             def default(self, obj):
                 if isinstance(obj, np.integer):
@@ -490,7 +490,7 @@ class IoU(BaseImageProcessing):
                 else:
                     return super(NumpyEncoder, self).default(obj)
 
-        # Název souboru s výsledky
+        # Results filename
         inner_contours_string = "WITH_inner_contours" if self.inner_contours else "WITHOUT_inner_contours"
         detect_corrupted_string = "WITH_detecting_corrupted" if self.detect_corrupted else "WITHOUT_detecting_corrupted"
 
@@ -502,26 +502,26 @@ class IoU(BaseImageProcessing):
 
 
 def average_json_data(json_data_list):
-    # Inicializujeme prázdné seznamy pro jednotlivé hodnoty
+    # Initialize empty lists for individual values
     parameters_list = []
 
-    # Projdeme všechny JSON data a přidáme jejich hodnoty do příslušných seznamů
+    # Iterate through all JSON data and add their values to respective lists
     for json_data in json_data_list:
         if json_data:
-            # Kontrola, zda jsou hodnoty v json_data ve správném formátu
+            # Check if values in json_data are in correct format
             if isinstance(json_data["parameters"], dict):
                 parameters_list.append(json_data["parameters"])
 
-    # Pokud jsou všechna json_data prázdná nebo neobsahují správné hodnoty, vrátíme None
+    # If all json_data are empty or don't contain correct values, return None
     if not parameters_list:
         return None
 
-    # Zprůměrujeme hodnoty v seznamech
+    # Average values in lists
     averaged_parameters = {}
     for key in parameters_list[0].keys():
         averaged_parameters[key] = np.mean([param[key] for param in parameters_list])
 
-    # Vytvoříme nový JSON objekt se zprůměrovanými hodnotami
+    # Create new JSON object with averaged values
     averaged_json_data = {
         "parameters": averaged_parameters,
     }

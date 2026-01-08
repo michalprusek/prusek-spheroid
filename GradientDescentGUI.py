@@ -10,7 +10,7 @@ import math
 
 class MyDataset(torch.utils.data.Dataset):
     def __init__(self, data):
-        self.data = data  # data by měla být seznamem trojic
+        self.data = data  # data should be a list of triplets
 
     def __len__(self):
         return len(self.data)
@@ -68,7 +68,7 @@ class GradientDescent:
     @staticmethod
     def show_error_message(message):
         root = tk.Tk()
-        root.withdraw()  # Skryje hlavní okno
+        root.withdraw()  # Hide main window
         messagebox.showerror("Error", message)
         root.destroy()
 
@@ -105,7 +105,7 @@ class GradientDescent:
         return averaged_batch_gradient
 
     def compute_gradient_parallel_batch(self, batch):
-        """ Vypočítá gradient paralelně pro daný batch. """
+        """Compute gradient in parallel for a given batch."""
         batch_gradient = {param_name: 0 for param_name in self.cont_parameters.keys()}
 
         with ThreadPoolExecutor() as executor:
@@ -247,7 +247,7 @@ class GradientDescent:
             if parameter_change < self.delta:
                 break
 
-        # Výběr nejlepší sady parametrů
+        # Select best parameter set
         index = np.argmax(IoU_array)
         json_data_list = []
         for batch in self.data_loader:
@@ -255,13 +255,13 @@ class GradientDescent:
 
         self.instance.save_parameters_json(IoU_array[index], json_data_list)
 
-        print(f"Optimalization done. IoU: {round(IoU_array[index] * 100, 2)}%")
+        print(f"Optimization done. IoU: {round(IoU_array[index] * 100, 2)}%")
         return parameters_array[index], IoU_array[index]
 
     def run(self):
         parameters = {**self.cont_parameters, **self.disc_parameters}
         print(f"Project: {self.projekt}, Algorithm: {self.algorithm}, Iteration {0}, Parameters = {parameters}")
 
-        parameters, iou = self.adam_optimizer_parallel()  # Zavolání Adam optimizeru
+        parameters, iou = self.adam_optimizer_parallel()  # Call Adam optimizer
 
         return parameters, iou

@@ -42,22 +42,22 @@ def calculate_sphericity_from_contour(contour):
 
 
 def calculate_feret_properties_from_contour(contour):
-    # Nalezení minimálního obdélníku, který obaluje konturu
+    # Find minimum bounding rectangle that encloses the contour
     rect = cv2.minAreaRect(contour)
     (width, height) = rect[1]
 
-    # Určení Maximálního Feretova průměru a Minimálního Feretova průměru
+    # Determine Maximum Feret diameter and Minimum Feret diameter
     feret_diameter_max = max(width, height)
     feret_diameter_min = min(width, height)
 
-    # Výpočet Feretova poměru
+    # Calculate Feret aspect ratio
     feret_aspect_ratio = feret_diameter_max / feret_diameter_min if feret_diameter_min else 0
 
     return feret_diameter_max, feret_diameter_min, feret_aspect_ratio
 
 
 def calculate_diameters_from_contour(contour):
-    # Nalezení elipsy, která nejlépe aproximuje konturu
+    # Find ellipse that best approximates the contour
     ellipse = cv2.fitEllipse(contour)
     (major_axis_length, minor_axis_length) = ellipse[1]
 
@@ -68,15 +68,15 @@ def calculate_orthogonal_diameter(contour):
     if contour is None or len(contour) < 2:
         return 0
 
-    # Nalezení minimálního obdélníku, který obaluje konturu
+    # Find minimum bounding rectangle that encloses the contour
     rect = cv2.minAreaRect(contour)
     box = cv2.boxPoints(rect)
     box = np.int0(box)
 
-    # Výpočet vzdáleností mezi páry bodů v rotovaném obdélníku
+    # Calculate distances between pairs of points in rotated rectangle
     distances = [np.linalg.norm(box[i] - box[(i + 1) % 4]) for i in range(4)]
 
-    # Určení ortogonálního průměru jako menší z dvou párů stran
+    # Determine orthogonal diameter as the smaller of two pairs of sides
     orthogonal_diameter = min(distances[0::2] + distances[1::2])
 
     return orthogonal_diameter

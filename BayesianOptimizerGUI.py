@@ -3,7 +3,7 @@ import time
 import torch
 from torch.utils.data import DataLoader
 import math
-# Flexibilní import gpu_utils
+# Flexible gpu_utils import
 try:
     from prusek_spheroid_bayesian import gpu_utils as gpu
 except ImportError:
@@ -13,7 +13,7 @@ from skopt import gp_minimize
 from skopt.space import Real, Integer
 from skopt.callbacks import DeltaYStopper
 
-# Volitelný import tkinter (pro headless prostředí)
+# Optional tkinter import (for headless environments)
 try:
     import tkinter as tk
     from tkinter import messagebox
@@ -29,7 +29,7 @@ np.random.seed(RANDOM_SEED)
 
 class MyDataset(torch.utils.data.Dataset):
     def __init__(self, data):
-        self.data = data  # data by měla být seznamem trojic
+        self.data = data  # data should be a list of triplets
 
     def __len__(self):
         return len(self.data)
@@ -41,34 +41,34 @@ class MyDataset(torch.utils.data.Dataset):
 
 class BayesianOptimizer:
     """
-    Bayesian Optimization pro hyperparametr tuning segmentace sféroidů.
-    Používá Gaussian Process jako surrogate model a Expected Improvement
-    jako acquisition function.
+    Bayesian Optimization for hyperparameter tuning of spheroid segmentation.
+    Uses Gaussian Process as surrogate model and Expected Improvement
+    as acquisition function.
 
-    Nahrazuje GradientDescent třídu - místo Adam optimizeru s finite differences
-    používá globální Bayesian optimization, která je efektivnější pro
-    nalezení globálního optima a lépe pracuje s diskrétními parametry.
+    Replaces the GradientDescent class - instead of Adam optimizer with finite differences,
+    it uses global Bayesian optimization, which is more efficient for
+    finding the global optimum and works better with discrete parameters.
     """
 
     def __init__(self, annotation_data, outputAddress, projekt, algorithm, learning_rate,
                  num_iterations, delta, batch_size, f, progress_window=None, inner_contours=False,
                  detect_corrupted=True):
         """
-        Inicializace Bayesian optimizeru.
+        Initialize Bayesian optimizer.
 
         Args:
-            annotation_data: Data pro trénink (masky, obrázky, jména)
-            outputAddress: Výstupní adresář
-            projekt: Název projektu
-            algorithm: Algoritmus segmentace ("Sauvola", "Niblack", "Gaussian")
-            learning_rate: Nepoužívá se v BO, zachováno pro kompatibilitu
-            num_iterations: Počet iterací (n_calls pro gp_minimize)
-            delta: Práh pro early stopping
-            batch_size: Velikost batche
-            f: Factory funkce pro vytvoření IoU instance
+            annotation_data: Training data (masks, images, names)
+            outputAddress: Output directory
+            projekt: Project name
+            algorithm: Segmentation algorithm ("Sauvola", "Niblack", "Gaussian")
+            learning_rate: Not used in BO, kept for compatibility
+            num_iterations: Number of iterations (n_calls for gp_minimize)
+            delta: Threshold for early stopping
+            batch_size: Batch size
+            f: Factory function for creating IoU instance
             progress_window: GUI progress window
-            inner_contours: Zda detekovat vnitřní kontury
-            detect_corrupted: Zda detekovat poškozené kontury
+            inner_contours: Whether to detect inner contours
+            detect_corrupted: Whether to detect corrupted contours
         """
         self.projekt = projekt
         self.algorithm = algorithm
@@ -79,11 +79,11 @@ class BayesianOptimizer:
 
         dataset = MyDataset(annotation_data)
         self.data_loader = DataLoader(dataset, batch_size=batch_size, shuffle=False)
-        # shuffle=False pro konzistentní evaluaci v BO
+        # shuffle=False for consistent evaluation in BO
 
         self.outputAddress = outputAddress
 
-        # Definice parametrů a jejich rozsahů
+        # Definition of parameters and their ranges
         self.cont_param_ranges = {}
         if self.algorithm in {"Sauvola", "Niblack", "Gaussian"}:
             self.cont_param_ranges["window_size"] = [1, 2001]
@@ -99,7 +99,7 @@ class BayesianOptimizer:
 
         self.disc_param_ranges = {"dilation_size": [0, 10]}
 
-        # Výchozí hodnoty pro inicializaci
+        # Default values for initialization
         self.default_params = {}
         if self.algorithm in {"Sauvola", "Niblack", "Gaussian"}:
             self.default_params["window_size"] = 800
@@ -120,7 +120,7 @@ class BayesianOptimizer:
                                self.algorithm, inner_contours=inner_contours,
                                detect_corrupted=detect_corrupted)
 
-        # Pro tracking průběhu optimalizace
+        # For tracking optimization progress
         self.iteration_count = 0
         self.best_iou = 0
         self.start_time = None
@@ -139,13 +139,13 @@ class BayesianOptimizer:
 
     def create_search_space(self):
         """
-        Vytvoří search space pro scikit-optimize.
-        Kombinuje continuous (Real) a discrete (Integer) parametry.
+        Create search space for scikit-optimize.
+        Combines continuous (Real) and discrete (Integer) parameters.
         """
         dimensions = []
         self.param_names = []
 
-        # Continuous parametry
+        # Continuous parameters
         if self.algorithm in {"Sauvola", "Niblack", "Gaussian"}:
             dimensions.append(Real(3, 2001, name='window_size'))  # Min 3 for OpenCV
             self.param_names.append('window_size')
@@ -161,34 +161,34 @@ class BayesianOptimizer:
         ])
         self.param_names.extend(['min_area', 'sigma', 'std_k'])
 
-        # Discrete parametr - Integer space umožňuje GP správně modelovat
+        # Discrete parameter - Integer space allows GP to model correctly
         dimensions.append(Integer(0, 10, name='dilation_size'))
         self.param_names.append('dilation_size')
 
         return dimensions
 
     def params_list_to_dict(self, params_list):
-        """Převede seznam parametrů z optimizeru na dictionary."""
+        """Convert list of parameters from optimizer to dictionary."""
         return {name: value for name, value in zip(self.param_names, params_list)}
 
     def params_dict_to_list(self, params_dict):
-        """Převede dictionary parametrů na seznam pro optimizer."""
+        """Convert dictionary of parameters to list for optimizer."""
         return [params_dict[name] for name in self.param_names]
 
     def objective(self, params_list):
         """
-        Objektová funkce pro Bayesian optimization.
-        Vrací NEGATIVNÍ IoU (protože gp_minimize minimalizuje).
+        Objective function for Bayesian optimization.
+        Returns NEGATIVE IoU (because gp_minimize minimizes).
 
         Args:
-            params_list: Seznam parametrů v pořadí definovaném v create_search_space()
+            params_list: List of parameters in order defined in create_search_space()
 
         Returns:
-            float: Negativní průměrné IoU přes všechny batche
+            float: Negative average IoU across all batches
         """
         parameters = self.params_list_to_dict(params_list)
 
-        # Průměr přes všechny batche
+        # Average across all batches
         iou_values = []
         for batch in self.data_loader:
             iou = self.instance.run(batch, parameters, False)
@@ -196,21 +196,21 @@ class BayesianOptimizer:
 
         avg_iou = np.mean(iou_values)
 
-        # Uložit do historie
+        # Save to history
         self.parameters_history.append(parameters.copy())
         self.iou_history.append(avg_iou)
 
-        return -avg_iou  # Negativní, protože minimalizujeme
+        return -avg_iou  # Negative because we minimize
 
     def progress_callback(self, res):
         """
-        Callback pro aktualizaci progress baru a logování.
+        Callback for updating progress bar and logging.
 
         Args:
-            res: OptimizeResult objekt z scikit-optimize
+            res: OptimizeResult object from scikit-optimize
         """
         self.iteration_count += 1
-        current_iou = -res.func_vals[-1]  # Poslední hodnota (negativní zpět)
+        current_iou = -res.func_vals[-1]  # Last value (negative back)
         best_iou_so_far = -res.fun
 
         elapsed_time = time.time() - self.start_time
@@ -218,7 +218,7 @@ class BayesianOptimizer:
         remaining_iters = self.num_iterations - self.iteration_count
         estimated_remaining = avg_time_per_iter * remaining_iters
 
-        # Získat aktuální parametry
+        # Get current parameters
         current_params = self.params_list_to_dict(res.x_iters[-1])
         rounded_params = {k: round(v, 3) if isinstance(v, float) else v
                          for k, v in current_params.items()}
@@ -251,20 +251,20 @@ class BayesianOptimizer:
         return False
 
     def get_initial_point(self):
-        """Vrátí výchozí bod pro optimalizaci (x0)."""
+        """Return default starting point for optimization (x0)."""
         return self.params_dict_to_list(self.default_params)
 
     def bayesian_optimize(self):
         """
-        Hlavní Bayesian optimization smyčka.
+        Main Bayesian optimization loop.
 
-        Používá:
-        - Gaussian Process jako surrogate model
-        - Expected Improvement (EI) jako acquisition function
-        - Integer space pro diskrétní parametry (lepší než hill climbing)
+        Uses:
+        - Gaussian Process as surrogate model
+        - Expected Improvement (EI) as acquisition function
+        - Integer space for discrete parameters (better than hill climbing)
 
         Returns:
-            tuple: (nejlepší_parametry_dict, nejlepší_iou)
+            tuple: (best_parameters_dict, best_iou)
         """
         self.start_time = time.time()
         self.iteration_count = 0
@@ -274,7 +274,7 @@ class BayesianOptimizer:
         dimensions = self.create_search_space()
         x0 = self.get_initial_point()
 
-        # Počet počátečních náhodných bodů
+        # Number of initial random points
         n_initial = min(10, self.num_iterations // 3)
 
         print(f"\nStarting Bayesian Optimization for {self.algorithm}")
@@ -290,17 +290,17 @@ class BayesianOptimizer:
                 acq_func='EI',  # Expected Improvement
                 n_calls=self.num_iterations,
                 n_initial_points=n_initial,
-                x0=x0,  # Začít od výchozích hodnot
+                x0=x0,  # Start from default values
                 random_state=42,
                 callback=self.progress_callback,
-                n_jobs=1,  # Sekvenční evaluace (objective není thread-safe)
+                n_jobs=1,  # Sequential evaluation (objective is not thread-safe)
                 verbose=False
             )
         except StopIteration:
-            # Early stopping byl aktivován
+            # Early stopping was activated
             pass
 
-        # Najít nejlepší parametry z historie
+        # Find best parameters from history
         best_idx = np.argmax(self.iou_history)
         best_params = self.parameters_history[best_idx]
         best_iou = self.iou_history[best_idx]
@@ -311,7 +311,7 @@ class BayesianOptimizer:
         print(f"Best IoU: {round(best_iou * 100, 2)}%")
         print(f"Best parameters: {best_params}")
 
-        # Finální run s nejlepšími parametry a uložení výsledků
+        # Final run with best parameters and save results
         json_data_list = []
         for batch in self.data_loader:
             json_data_list.append(self.instance.run(batch, best_params, True))
@@ -334,10 +334,10 @@ class BayesianOptimizer:
 
     def run(self):
         """
-        Spustí Bayesian optimization.
+        Run Bayesian optimization.
 
         Returns:
-            tuple: (nejlepší_parametry_dict, nejlepší_iou)
+            tuple: (best_parameters_dict, best_iou)
         """
         print(f"Project: {self.projekt}, Algorithm: {self.algorithm}, "
               f"Starting Bayesian Optimization with {self.num_iterations} iterations")

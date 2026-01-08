@@ -40,11 +40,11 @@ class ProcessingProgressWindow(tk.Toplevel):
         self.geometry("500x250")
         self.resizable(width=False, height=False)
 
-        # Frame pro centrování obsahu
+        # Frame for centering content
         center_frame = tk.Frame(self)
         center_frame.pack(expand=True)
 
-        # Label ve frame pro centrování
+        # Label in frame for centering
         self.label_progress = tk.Label(center_frame, text="Progress: ")
         self.label_progress.pack()
 
@@ -57,14 +57,14 @@ class OptimizationProgressWindow(tk.Toplevel):
         tk.Toplevel.__init__(self, master)
         self.title("Optimization Progress")
 
-        self.geometry("500x250")  # Šířka x Výška
+        self.geometry("500x250")  # Width x Height
         self.resizable(width=False, height=False)
 
-        # Frame pro centrování obsahu
+        # Frame for centering content
         center_frame = tk.Frame(self)
         center_frame.pack(expand=True)
 
-        # Labely ve frame pro centrování
+        # Labels in frame for centering
         self.label_project = tk.Label(center_frame, text="Project: ")
         self.label_project.pack()
 
@@ -149,14 +149,14 @@ class ParameterEntryDialog(tk.Toplevel):
 def browse_file(var, title, label):
     file_path = filedialog.askopenfilename()
     var.set(file_path)
-    # Aktualizace předaného labelu s vlastním textem
+    # Update the passed label with custom text
     label.config(text=f"{title}: {file_path}")
 
 
 def browse_directory(var, title, label):
     directory_path = filedialog.askdirectory()
     var.set(directory_path)
-    # Aktualizace předaného labelu s vlastním textem
+    # Update the passed label with custom text
     label.config(text=f"{title}: {directory_path}")
 
 
@@ -168,7 +168,7 @@ class SferoidSegmentationGUI:
         self.master = master
         self.master.title("Spheroid segmentation")
 
-        # Adresní sekce
+        # Address section
         self.address_section_label = tk.Label(master, text="Address Settings", font=("Helvetica", 12, "bold"))
         self.address_section_label.pack()
 
@@ -185,7 +185,7 @@ class SferoidSegmentationGUI:
                                                  command=lambda: self.checkbox_changed('coco'))
         self.load_coco_checkbox.pack(side=tk.TOP)
 
-        # File Dialog pro anotace COCO
+        # File Dialog for COCO annotations
         self.coco_annotation_button = tk.Button(self.COCO_frame,
                                                 text="Retrieve the COCO 1.0 ZIP file address",
                                                 command=lambda: browse_file(self.coco_annotation_path,
@@ -218,7 +218,7 @@ class SferoidSegmentationGUI:
                                                                                self.mask_address_label))
         self.retrieve_mask_button.pack(side=tk.TOP)
 
-        # Vytvoření labelu pro zobrazení cesty k masce
+        # Create label for displaying mask path
         self.mask_address_label = tk.Label(self.masks_frame, text="")
         self.mask_address_label.pack()
 
@@ -237,7 +237,7 @@ class SferoidSegmentationGUI:
         self.masks_annotation_path = tk.StringVar()
         self.image_dataset_path = tk.StringVar()
 
-        # File Dialog pro výsledné segmentované obrázky (změna na askdirectory)
+        # File Dialog for output segmented images (changed to askdirectory)
         self.dataset_address_button = tk.Button(master,
                                                 text="Dataset of all images address (folder of images you want to segment)",
                                                 command=lambda: browse_directory(self.dataset_path,
@@ -247,11 +247,11 @@ class SferoidSegmentationGUI:
 
         self.dataset_path = tk.StringVar()
 
-        # Indikátor pro vyplnění adresy
+        # Indicator for address filled
         self.dataset_address_label = tk.Label(master, text="")
         self.dataset_address_label.pack()
 
-        # File Dialog pro výsledné segmentované obrázky (změna na askdirectory)
+        # File Dialog for output segmented images (changed to askdirectory)
         self.output_address_button = tk.Button(master,
                                                text="Output address (folder where to save the output)",
                                                command=lambda: browse_directory(self.output_path,
@@ -261,25 +261,25 @@ class SferoidSegmentationGUI:
 
         self.output_path = tk.StringVar()
 
-        # Indikátor pro vyplnění adresy
+        # Indicator for address filled
         self.output_address_label = tk.Label(master, text="")
         self.output_address_label.pack()
 
-        # Oddělovací čára mezi adresní a metody sekce
+        # Separator line between address and methods section
         self.address_separator = tk.Frame(master, height=2, bd=1, relief=tk.SUNKEN)
         self.address_separator.pack(fill=tk.X, padx=5, pady=5)
 
-        # Metodická sekce
+        # Method section
         self.method_section_label = tk.Label(master, text="Method Settings", font=("Helvetica", 12, "bold"))
         self.method_section_label.pack()
 
-        # Textbox pro název projektu
+        # Textbox for project name
         self.project_name_label = tk.Label(master, text="Project Name:")
         self.project_name_label.pack()
         self.project_name_entry = tk.Entry(master)
         self.project_name_entry.pack()
 
-        # Tlačítko pro načtení parametrů z JSON souboru
+        # Button for loading parameters from JSON file
         self.load_parameters_button = tk.Button(master,
                                                 text="I already know the parameters (load JSON file with parameters)",
                                                 command=self.load_and_run_parameters)
@@ -297,7 +297,7 @@ class SferoidSegmentationGUI:
                                        state=tk.DISABLED)
         self.cancel_button.pack(side=tk.LEFT)
 
-        # Checkboxy pro výběr metod
+        # Checkboxes for method selection
         self.methods_frame = tk.Frame(master)
         self.methods_frame.pack()
         self.method_labels = ["Sauvola", "Niblack", "Gaussian"]
@@ -311,14 +311,14 @@ class SferoidSegmentationGUI:
 
             self.methods_checkboxes.append((method_checkbox, method_var))
 
-        # Frame pro výběr optimizéru (GD vs BO)
+        # Frame for optimizer selection (GD vs BO)
         self.optimizer_frame = tk.Frame(master)
         self.optimizer_frame.pack()
 
         self.optimizer_label = tk.Label(self.optimizer_frame, text="Optimizer:")
         self.optimizer_label.grid(row=0, column=0, padx=5, pady=5)
 
-        self.optimizer_var = tk.StringVar(value="BO")  # Výchozí: Bayesian Optimization
+        self.optimizer_var = tk.StringVar(value="BO")  # Default: Bayesian Optimization
 
         self.gd_radio = tk.Radiobutton(self.optimizer_frame, text="Gradient Descent (Adam)",
                                         variable=self.optimizer_var, value="GD")
@@ -328,7 +328,7 @@ class SferoidSegmentationGUI:
                                         variable=self.optimizer_var, value="BO")
         self.bo_radio.grid(row=0, column=2, padx=5, pady=5)
 
-        # Textová pole pro zadání parametrů
+        # Text fields for parameter input
         self.parameters_frame = tk.Frame(master)
         self.parameters_frame.pack()
         self.learning_rate_label = tk.Label(self.parameters_frame, text="Learning Rate:")
@@ -351,13 +351,13 @@ class SferoidSegmentationGUI:
         self.batch_size_entry = tk.Entry(self.parameters_frame)
         self.batch_size_entry.grid(row=3, column=1, padx=5, pady=5)
 
-        # Přednastavení hodnot parametrů
+        # Preset parameter values
         self.learning_rate_entry.insert(0, "0.01")
         self.iterations_entry.insert(0, "50")
         self.stop_condition_entry.insert(0, "0.0002")
         self.batch_size_entry.insert(0, "10")
 
-        # Oddělovací čára mezi adresní a metody sekce
+        # Separator line between address and methods section
         self.method_separator = tk.Frame(master, height=2, bd=1, relief=tk.SUNKEN)
         self.method_separator.pack(fill=tk.X, padx=5, pady=5)
 
@@ -367,7 +367,7 @@ class SferoidSegmentationGUI:
         checkbox_frame = tk.Frame(master)
         checkbox_frame.pack()
 
-        # Checkbox pro 'also find the inner contours'
+        # Checkbox for 'also find the inner contours'
         self.inner_contours_var = tk.BooleanVar()
         self.checkbox_inner_contours = tk.Checkbutton(checkbox_frame, text="Also find the inner contours",
                                                       variable=self.inner_contours_var,
@@ -380,21 +380,21 @@ class SferoidSegmentationGUI:
                                                         offvalue=False)
         self.checkbox_detect_corrupted.pack(side=tk.LEFT)
 
-        # Checkbox pro 'Create JSON file for export to CVAT'
+        # Checkbox for 'Create JSON file for export to CVAT'
         self.create_json_var = tk.BooleanVar()
         self.checkbox_create_json = tk.Checkbutton(checkbox_frame, text="Create JSON file for export to CVAT",
                                                    variable=self.create_json_var,
                                                    onvalue=True, offvalue=False)
         self.checkbox_create_json.pack(side=tk.LEFT)
 
-        # Checkbox pro 'Calculate contour properties'
+        # Checkbox for 'Calculate contour properties'
         self.calculate_contours_var = tk.BooleanVar()
         self.checkbox_calculate_contours = tk.Checkbutton(checkbox_frame, text="Calculate spheroid properties",
                                                           variable=self.calculate_contours_var,
                                                           onvalue=True, offvalue=False)
         self.checkbox_calculate_contours.pack(side=tk.LEFT)
 
-        # Tlačítko pro spuštění
+        # Run button
         self.run_button = tk.Button(master, text="Run", command=self.run_method)
         self.run_button.pack()
 
@@ -438,7 +438,7 @@ class SferoidSegmentationGUI:
                                                      command=self.calculate_spheroid_properties)
         self.calculate_properties_button.pack()
 
-        # Aktualizovat stav tlačítek při spuštění
+        # Update button state on startup
         self.update_buttons_state()
 
     def calculate_spheroid_properties(self):
@@ -453,7 +453,7 @@ class SferoidSegmentationGUI:
         # Dialog for progress
         progress_dialog = Toplevel(self.master)
         progress_dialog.title("Processing Progress")
-        progress_dialog.geometry("400x100")  # Nastaví rozměry okna na 400x100 pixelů
+        progress_dialog.geometry("400x100")  # Sets window dimensions to 400x100 pixels
         Label(progress_dialog, text=f"Total images: {total_masks}").pack()
         progress_label = Label(progress_dialog, text="Starting...")
         progress_label.pack()
@@ -469,7 +469,7 @@ class SferoidSegmentationGUI:
 
             for order, contour in enumerate(contours, start=1):
                 # Your contour processing and feature calculation goes here
-                additional_data = cf.calculate_all(contour)  # Toto je vaše vlastní funkce pro výpočet
+                additional_data = cf.calculate_all(contour)  # This is your custom calculation function
                 contour_data = {
                     'MaskName': os.path.basename(name),
                     'ContourOrder': order,
@@ -523,7 +523,7 @@ class SferoidSegmentationGUI:
         self.cancel_button.config(state=tk.DISABLED)
 
     def update_buttons_state(self):
-        # Aktualizujte stav tlačítek a checkboxů podle aktuálně vybraného checkboxu
+        # Update button and checkbox state based on currently selected checkbox
         if self.load_coco_var.get() == 1:
             self.retrieve_mask_button.config(state=tk.DISABLED)
             self.retrieve_images_button.config(state=tk.DISABLED)
@@ -538,7 +538,7 @@ class SferoidSegmentationGUI:
             self.coco_annotation_button.config(state=tk.DISABLED)
 
     def checkbox_changed(self, var):
-        # Tato metoda se volá při změně jakéhokoliv checkboxu
+        # This method is called when any checkbox changes
         if var == 'coco' and self.load_coco_var.get() == 1:
             self.load_masks_var.set(0)
         elif var == 'mask' and self.load_masks_var.get() == 1:
@@ -564,7 +564,7 @@ class SferoidSegmentationGUI:
         with open(file_path, 'r') as file:
             data = json.load(file)
 
-        # Extrahujte potřebná data
+        # Extract required data
         self.loaded_method = data.get("method", "")
         self.loaded_parameters = data.get("parameters", {})
         self.inner_contours_var.set(data.get("inner_contours", False))
@@ -575,7 +575,7 @@ class SferoidSegmentationGUI:
             messagebox.showerror("Error", "No parameters loaded.")
             return
 
-        # Předpokládá se, že tato metoda otevře dialog pro potvrzení parametrů
+        # This method assumes it opens a dialog to confirm parameters
         parameter_entry_dialog = ParameterEntryDialog(self.master, self.loaded_method, self.loaded_parameters)
         self.master.wait_window(parameter_entry_dialog)
 
@@ -610,7 +610,7 @@ class SferoidSegmentationGUI:
                 messagebox.showerror("Error", "At least one annotation loading method must be selected.")
             return
 
-        # Kontrola, zda jsou vyplněny potřebné cesty
+        # Check if required paths are filled
         if self.load_coco_var.get() == 1 and not self.coco_annotation_path.get():
             messagebox.showerror("Error", "The COCO annotations path must be filled.")
             return
@@ -654,7 +654,7 @@ class SferoidSegmentationGUI:
                       zip(["Sauvola", "Niblack", "Gaussian"], self.methods_checkboxes) if
                       var.get() == 1]
 
-        # Načtené parametry z JSON souboru, pokud jsou k dispozici
+        # Loaded parameters from JSON file, if available
         if self.loaded_parameters:
             parameters = self.loaded_parameters
             progress_window1 = None
@@ -693,7 +693,7 @@ class SferoidSegmentationGUI:
                 stop_condition = float(self.stop_condition_entry.get())
                 batch_size = int(self.batch_size_entry.get())
                 progress_window1.deiconify()
-                # Výběr optimizéru podle radiobutton
+                # Select optimizer based on radiobutton
                 if self.optimizer_var.get() == "BO":
                     optimizer = bo.BayesianOptimizer(annotation_data, output_address, project_name, algorithm,
                                                     learning_rate, num_iterations, stop_condition, batch_size,
@@ -721,7 +721,7 @@ class SferoidSegmentationGUI:
 
         print(f"Total time: {round(time.time() - totalTime)} seconds")
 
-        # Zobrazit dialogové okno po dokončení segmentace
+        # Show dialog after segmentation is completed
         self.show_completion_dialog(round(time.time() - totalTime), output_address)
 
 

@@ -8,7 +8,7 @@ import rasterio.features
 import warnings
 import numpy as np
 import json as js
-# Volitelný import tkinter (pro headless prostředí)
+# Optional tkinter import (for headless environments)
 try:
     import tkinter as tk
     from tkinter import messagebox
@@ -21,7 +21,7 @@ warnings.filterwarnings("ignore", category=RuntimeWarning, module="shapely.set_o
 
 
 def show_error(title, message):
-    """Zobrazí chybu pomocí messagebox nebo print."""
+    """Display error using messagebox or print."""
     if HAS_TKINTER:
         messagebox.showerror(title, message)
     else:
@@ -79,8 +79,8 @@ def find_contour_centroid(contour):
 
 def convert_contours_to_coco(outer_contours, inner_contours, height, width, img_name, start_id, coco_data):
     new_id = start_id  # Starting ID for annotations
-    outer_category_id = 1  # ID pro štítek "spheroids"
-    inner_category_id = 2  # ID pro štítek "holes"
+    outer_category_id = 1  # ID for label "spheroids"
+    inner_category_id = 2  # ID for label "holes"
 
     # Add image information
     image_info = {
@@ -118,10 +118,10 @@ def convert_contours_to_coco(outer_contours, inner_contours, height, width, img_
             coco_data["annotations"].append(annotation_data)
             new_id += 1
 
-    # Zpracování vnějších kontur
+    # Process outer contours
     process_contours(outer_contours, outer_category_id)
 
-    # Zpracování vnitřních kontur, pokud jsou k dispozici
+    # Process inner contours if available
     if inner_contours:
         process_contours(inner_contours, inner_category_id)
 
@@ -245,14 +245,14 @@ def save_polygons(polygons_ref, polygons_pred, title, name, projekt, algorithm, 
     ax = plt.gca()
     ax.set_aspect("equal")
 
-    # Zpracování seznamu polygonů pro pravdu
+    # Process list of polygons for ground truth
     for polygon in polygons_ref:
         if polygon.geom_type != "Point":
             xs, ys = polygon.exterior.xy
             plt.plot(xs, ys, "r-", linewidth=0.4)
             plt.text(xs[0], ys[0], "Truth", color="red", fontsize=10, ha="right", va="bottom")
 
-    # Zpracování seznamu polygonů pro předpověď
+    # Process list of polygons for prediction
     for polygon in polygons_pred:
         if polygon.geom_type != "Point":
             xs, ys = polygon.exterior.xy
@@ -262,7 +262,7 @@ def save_polygons(polygons_ref, polygons_pred, title, name, projekt, algorithm, 
     ax.invert_yaxis()
     plt.title(title)
 
-    # Uložení obrázku
+    # Save image
     if address:
         plt.savefig(f"{address}/{algorithm}_{name.replace('bmp', 'png')}")
     else:
@@ -290,11 +290,11 @@ def load_annotations(annotations_address, images_address):
             img_path = os.path.join(images_address, img_name)
             img = cv.imread(img_path)
 
-            # Inicializace masky pro každý obrázek
+            # Initialize mask for each image
             if img_name not in masks_per_image:
                 masks_per_image[img_name] = np.zeros((img_height, img_width), dtype=np.uint8)
 
-            # Pro každý segment vytvořte kontury
+            # Create contours for each segment
             for segmentation in annotation["segmentation"]:
                 points = np.array([[segmentation[i], segmentation[i + 1]] for i in range(0, len(segmentation), 2)],
                                   dtype=np.int32)
@@ -318,7 +318,7 @@ def checkPolygon(geom):
 
 
 def IoU(projekt, algorithm, mask_ref, mask_pred, name, plot=False, save=True, lock=None, address=None):
-    # Výpočet IoU
+    # Calculate IoU
     intersection = np.logical_and(mask_ref, mask_pred)
     union = np.logical_or(mask_ref, mask_pred)
     IoU = np.sum(intersection) / np.sum(union)
@@ -327,23 +327,23 @@ def IoU(projekt, algorithm, mask_ref, mask_pred, name, plot=False, save=True, lo
     false_negative = np.sum(np.logical_and(mask_ref, np.logical_not(mask_pred)))
     false_positive = np.sum(np.logical_and(np.logical_not(mask_ref), mask_pred))
 
-    # Výpočet True Positive Rate (TPR) a Positive Predictive Value (PPV)
+    # Calculate True Positive Rate (TPR) and Positive Predictive Value (PPV)
     tpr = true_positive / (true_positive + false_negative)
     ppv = true_positive / (true_positive + false_positive)
 
-    # Získání kontur z masek
+    # Get contours from masks
     contours_ref, _ = cv.findContours(mask_ref.astype(np.uint8), cv.RETR_EXTERNAL, cv.CHAIN_APPROX_SIMPLE)
     contours_pred, _ = cv.findContours(mask_pred.astype(np.uint8), cv.RETR_EXTERNAL, cv.CHAIN_APPROX_SIMPLE)
 
-    # Převod kontur přímo na polygonové reprezentace
+    # Convert contours directly to polygon representations
     polygon_ref = [Polygon(cnt.reshape(-1, 2)) for cnt in contours_ref if len(cnt) >= 3]
     polygon_pred = [Polygon(cnt.reshape(-1, 2)) for cnt in contours_pred if len(cnt) >= 3]
 
-    # Odstranění neplatných polygonů
+    # Remove invalid polygons
     polygon_ref = [p for p in polygon_ref if p.is_valid and p.area > 0]
     polygon_pred = [p for p in polygon_pred if p.is_valid and p.area > 0]
 
-    # Vykreslení a uložení polygonů, pokud je to požadováno
+    # Plot and save polygons if requested
     if plot:
         plot_polygons(polygon_ref, polygon_pred, "IoU: " + str(IoU * 100) + "%")
     if save:
@@ -490,37 +490,37 @@ def wolf_thresholding(image, window_size=15, k=0.5):
 
 
 def is_point_inside_contour(contour, point):
-    # Získání vzdálenosti od bodu k nejbližšímu bodu na kontuře
+    # Get distance from point to nearest point on contour
     distance = cv.pointPolygonTest(contour, point, True)
 
-    # Pokud vzdálenost záporná, bod je uvnitř kontury
+    # If distance is negative, point is inside contour
     return distance > 0
 
 
 def check_contour_in_corners(contour, image_width, image_height):
     margin = 2
-    # Definice souřadnic rohů obrázku
+    # Define image corner coordinates
     top_left_corner = (margin, margin)
     top_right_corner = (image_width - 1 - margin, margin)
     bottom_left_corner = (margin, image_height - 1 - margin)
     bottom_right_corner = (image_width - 1 - margin, image_height - 1 - margin)
 
-    # Procházení rohů
+    # Iterate through corners
     corners = [top_left_corner, top_right_corner, bottom_left_corner, bottom_right_corner]
 
-    # Kontrola, zda bod leží uvnitř kontury pro každý roh
+    # Check if point lies inside contour for each corner
     for corner in corners:
         if is_point_inside_contour(contour, corner):
-            return False  # Kontura zasahuje do rohu
+            return False  # Contour extends into corner
 
     return True
 
 
 def clahe_correction(img_gray, clip_limit=2.0, tile_size=(8, 8)):
-    # Inicializace CLAHE (Contrast Limited Adaptive Histogram Equalization)
+    # Initialize CLAHE (Contrast Limited Adaptive Histogram Equalization)
     clahe = cv.createCLAHE(clipLimit=clip_limit, tileGridSize=tile_size)
 
-    # Aplikace CLAHE na šedý snímek
+    # Apply CLAHE to grayscale image
     clahe_image = clahe.apply(img_gray)
 
     return clahe_image
