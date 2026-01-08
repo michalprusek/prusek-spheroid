@@ -10,6 +10,10 @@ scikit-image
 pandas
 shapely
 rasterio
+matplotlib
+
+# Excel support
+openpyxl
 
 # Bayesian optimization
 scikit-optimize>=0.9
