@@ -1,0 +1,15 @@
+# Requirements for prusek_spheroid_bayesian
+# Bayesian optimization version using scikit-optimize
+
+# Core dependencies
+numpy
+opencv-python
+torch
+scikit-learn
+scikit-image
+pandas
+shapely
+rasterio
+
+# Bayesian optimization
+scikit-optimize>=0.9
