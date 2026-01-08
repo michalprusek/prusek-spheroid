@@ -1,16 +1,25 @@
 import tkinter as tk
 from tkinter import filedialog
 from tkinter import messagebox, Toplevel, Label
-from prusek_spheroid_bayesian import BayesianOptimizerGUI as bo
-from prusek_spheroid_bayesian import GradientDescentGUI as gd
-from prusek_spheroid_bayesian import ContoursClassGUI as F
-from prusek_spheroid_bayesian import Funkce as f
 import threading
 import time
 import json
 import zipfile
 import os
-from prusek_spheroid_bayesian import characteristic_functions as cf
+
+# Flexible imports - support both package and local usage
+try:
+    from prusek_spheroid_bayesian import BayesianOptimizerGUI as bo
+    from prusek_spheroid_bayesian import GradientDescentGUI as gd
+    from prusek_spheroid_bayesian import ContoursClassGUI as F
+    from prusek_spheroid_bayesian import Funkce as f
+    from prusek_spheroid_bayesian import characteristic_functions as cf
+except ImportError:
+    import BayesianOptimizerGUI as bo
+    import GradientDescentGUI as gd
+    import ContoursClassGUI as F
+    import Funkce as f
+    import characteristic_functions as cf
 import pandas as pd
 import cv2 as cv
 
